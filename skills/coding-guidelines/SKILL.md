@@ -108,7 +108,7 @@ Use `app/`, `features/`, and `shared/` for React applications. Organize features
 - Folder ownership follows business concepts; nested URLs do not require matching folder nesting.
 - Start related behavior inside its owning feature. Split a separate feature when it has substantial independent behavior or reuse.
 - Create folders and files only when needed. Do not scaffold empty layers or require every page to have a loader, action, hook, or components folder.
-- Prefer descriptive kebab-case filenames with `.page.tsx`, `.loader.ts`, `.action.ts`, `.routes.ts`, `.api.ts`, and `.types.ts` suffixes where applicable.
+- Prefer descriptive kebab-case filenames with `.page.tsx`, `.routes.tsx`, `.api.ts`, and `.types.ts` suffixes where applicable.
 
 Example for a project management application:
 
@@ -118,45 +118,40 @@ src/
   main.tsx
   index.css
   app/
-    router.ts
+    router.tsx
     app-layout.tsx
     app-error-boundary.tsx
     providers.tsx
   features/
     auth/
-      auth.routes.ts
+      auth.routes.tsx
       auth.api.ts
       pages/
         login/
           login.page.tsx
-          login.action.ts
     projects/
-      projects.routes.ts
+      projects.routes.tsx
       projects.api.ts
       projects.types.ts
       pages/
         project-list/
           project-list.page.tsx
-          project-list.loader.ts
           components/
             create-project-dialog.tsx
         project-details/
           project-details.page.tsx
-          project-details.loader.ts
           components/
             project-header.tsx
             project-members.tsx
       components/
         project-card.tsx
     tasks/
-      tasks.routes.ts
+      tasks.routes.tsx
       tasks.api.ts
       tasks.types.ts
       pages/
         task-details/
           task-details.page.tsx
-          task-details.loader.ts
-          task-details.action.ts
           components/
             task-comments.tsx
       components/
@@ -179,27 +174,41 @@ bun.lock
 
 ## React Router Data Mode
 
-Default to React Router data mode for new React + Vite applications. Respect an existing application's router and mode unless migration is requested.
+Default to a simple React Router data-mode setup for new React + Vite applications. Respect an existing application's router and mode unless migration is requested.
 
-- Create one router outside the React tree with `createBrowserRouter` in `app/router.ts`.
-- Render it through `RouterProvider` from `react-router/dom` in `main.tsx`. Import router APIs and types from `react-router`, using APIs compatible with the installed version.
-- Export feature route objects from `<feature>.routes.ts`, typed with `satisfies RouteObject[]`, and compose them in `app/router.ts`.
-- Keep paths, index routes, and nesting declared in route configuration. Render nested pages through `<Outlet />` in layouts.
-- Use route `loader` functions for data required by a route and `useLoaderData` to consume it. Avoid fetching the same data again in a component effect.
-- Use route `action` functions for mutations associated with routes. Use `<Form>` or `useSubmit` for submissions with navigation, and `useFetcher` / `<fetcher.Form>` for loads or submissions without navigation.
-- Use `useNavigation` for navigation pending states and `fetcher.state` for fetcher pending states. Return expected validation errors as action data and display them near the relevant fields.
-- Let the router revalidate loader data after successful actions. Customize revalidation only for a concrete requirement.
-- Keep HTTP requests in feature API modules; loaders and actions orchestrate route parameters, validation, API calls, and redirects.
-- Validate route parameters and form input at the boundary. Pass `request.signal` to fetch calls when appropriate so cancelled navigation can cancel requests.
-- Use route error boundaries with `useRouteError` and `isRouteErrorResponse` where appropriate. Provide an application-level fallback and more local boundaries when useful.
-- Use `<Link>` and `<NavLink>` for internal navigation, and redirects from loaders/actions when the outcome determines the destination.
-- Use `route.lazy` to split page implementations when useful. Map descriptive page, loader, and action exports to the router's `Component`, `loader`, and `action` properties; keep matching properties such as `path` outside the lazy implementation.
-- When loading independent page, loader, or action modules lazily, import them in parallel. A lightweight eager loader can start data fetching while the page bundle loads.
-- Prefer separate page, loader, and action files when they clarify responsibilities; small route implementations may colocate them.
-- Data mode in a Vite SPA runs loaders and actions in the browser. Keep secrets and privileged operations on a backend; client routing does not enforce authorization.
-- Keep Vite's React setup. Data mode does not require the React Router framework Vite plugin, filesystem routing, generated framework route types, or framework-only `clientLoader` / `clientAction` conventions.
+- Create one router outside the React tree with `createBrowserRouter` in `app/router.tsx`.
+- Use normal imports and `element: <Page />` to map URLs to pages.
+- Render the router through `RouterProvider` from `react-router/dom` in `main.tsx`. Import router APIs and types from `react-router`, using APIs compatible with the installed version.
+- Keep small route trees together in `app/router.tsx`. Extract feature route objects into `<feature>.routes.tsx` when the route tree grows, using `satisfies RouteObject[]` when useful.
+- Use `children` for nested routes, `index: true` for a parent's default page, and `<Outlet />` in layouts to render child pages.
+- Use `<Link>` and `<NavLink>` for internal navigation.
+- Do not add loaders, actions, fetchers, or lazy loading by default. Introduce them only when a feature has a concrete need or the user requests them.
+- Keep component-owned data access and interactions close to their owning feature. If a loader is introduced, avoid fetching the same data again in the component.
+- Keep Vite's React setup; data mode does not require the React Router framework Vite plugin or filesystem routing.
 
-References: [Data mode setup](https://reactrouter.com/start/data/installation), [route objects](https://reactrouter.com/start/data/route-object), and [actions](https://reactrouter.com/start/data/actions).
+Example (`app/router.tsx`):
+
+```tsx
+import { createBrowserRouter } from 'react-router';
+import { AppLayout } from './app-layout';
+import { Home } from '../features/home/pages/home/home.page';
+import { Dashboard } from '../features/dashboard/pages/dashboard/dashboard.page';
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <Home /> },
+      { path: 'dashboard', element: <Dashboard /> },
+    ],
+  },
+]);
+```
+
+`AppLayout` renders an `<Outlet />` where the matched child page belongs. The feature names above illustrate routing; use the application's actual business areas.
+
+Reference: [React Router data-mode setup](https://reactrouter.com/start/data/installation).
 
 ## Runtime and Package Manager
 
@@ -265,7 +274,7 @@ function assertNever(value: never): never {
 - Keep one component per file.
 - Handle loading, error, and empty states with early returns.
 - Call hooks unconditionally and before conditional returns.
-- For data-mode routes, use loaders and actions for route data and mutations. Keep component-owned queries, fetchers, and local interactions in the leaf component that owns the behavior; avoid duplicating loader requests.
+- Keep queries, mutations, and local interactions in the leaf component that owns the behavior. Introduce route loaders or actions only when needed; avoid duplicating their requests in components.
 - Avoid drilling server data and mutation callbacks through intermediate components.
 - Keep reusable presentation components driven by props.
 - Use explicit ternaries for conditional JSX: `count > 0 ? <Results /> : null`.
