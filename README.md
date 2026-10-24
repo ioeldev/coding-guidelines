@@ -24,7 +24,7 @@ bunx skills add ioeldev/coding-guidelines --skill coding-guidelines -a codex -g
 
 ## Guidelines
 
-The skill covers descriptive naming, flat control flow, logical spacing, focused functions, domain-based architecture, strict TypeScript, React patterns, promises and errors, and Bun tooling.
+The skill covers descriptive naming, flat control flow, logical spacing, focused functions, business-based organization using `app/`, `features/`, and `shared/`, strict TypeScript, React Router data mode, React patterns, promises and errors, and Bun tooling.
 
 Read [SKILL.md](skills/coding-guidelines/SKILL.md) for the full instructions.
 
